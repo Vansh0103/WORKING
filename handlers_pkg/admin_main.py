@@ -578,87 +578,117 @@ def confirm_approve_all(call):
 
 
 # ======================== ADMIN SETTINGS ========================
-# ======================== ADMIN SETTINGS ========================
 @bot.message_handler(func=lambda m: m.text == "⚙️ Settings" and is_admin(m.from_user.id))
 def admin_settings(message):
     show_settings(message.chat.id)
 
-@bot.message_handler(func=lambda m: m.text == "🧠 Advanced Settings" and is_admin(m.from_user.id))
-def advanced_settings_handler(message):
-    show_advanced_settings(message.chat.id)
-
-@bot.message_handler(func=lambda m: m.text == "🎮 Mine Admin" and is_admin(m.from_user.id))
-def mine_admin_handler(message):
-    show_mine_settings(message.chat.id)
-
 
 def show_settings(chat_id):
-    lvl1 = format_referral_level_line({"level": 1, "type": get_text_setting("ref_level1_type", "fixed"), "value": get_float_setting("ref_level1_value", 2)})
-    lvl2 = format_referral_level_line({"level": 2, "type": get_text_setting("ref_level2_type", "fixed"), "value": get_float_setting("ref_level2_value", 1)})
-    lvl3 = format_referral_level_line({"level": 3, "type": get_text_setting("ref_level3_type", "fixed"), "value": get_float_setting("ref_level3_value", 0.5)})
-    wd_en = is_enabled("withdraw_enabled", True)
-    rf_en = is_enabled("refer_enabled", True)
-    gf_en = is_enabled("gift_enabled", True)
-    t_en = is_enabled("tasks_enabled", True)
+    pr = get_setting("per_refer")
+    mw = get_setting("min_withdraw")
+    wb = get_setting("welcome_bonus")
+    db_val = get_setting("daily_bonus")
+    mx = get_setting("max_withdraw_per_day")
+    ws = get_setting("withdraw_time_start")
+    we = get_setting("withdraw_time_end")
+    wd_en = get_setting("withdraw_enabled")
+    rf_en = get_setting("refer_enabled")
+    gf_en = get_setting("gift_enabled")
+    mn = get_setting("bot_maintenance")
+    tk_en = get_setting("tasks_enabled")
+    ref_sys = get_setting("referral_system_enabled")
+    ipvf = get_setting("ip_verification_enabled")
+    games_en = get_setting("games_enabled")
     markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton(f"💰 Per Refer: ₹{pr}", callback_data="s_per_refer"),
+        types.InlineKeyboardButton(f"📉 Min WD: ₹{mw}", callback_data="s_min_wd"),
+    )
+    markup.add(
+        types.InlineKeyboardButton(f"🎉 Welcome: ₹{wb}", callback_data="s_welcome"),
+        types.InlineKeyboardButton(f"📅 Daily: ₹{db_val}", callback_data="s_daily"),
+    )
+    markup.add(
+        types.InlineKeyboardButton(f"📈 Max WD: ₹{mx}", callback_data="s_max_wd"),
+        types.InlineKeyboardButton(f"⏰ Time: {ws}-{we}h", callback_data="s_wd_time"),
+    )
     markup.add(
         types.InlineKeyboardButton(f"{'🟢' if wd_en else '🔴'} Withdraw", callback_data="tog_withdraw"),
         types.InlineKeyboardButton(f"{'🟢' if rf_en else '🔴'} Refer", callback_data="tog_refer"),
     )
     markup.add(
         types.InlineKeyboardButton(f"{'🟢' if gf_en else '🔴'} Gift", callback_data="tog_gift"),
-        types.InlineKeyboardButton(f"{'🟢' if t_en else '🔴'} Tasks", callback_data="tog_tasks"),
+        types.InlineKeyboardButton(f"{'🟢' if tk_en else '🔴'} Tasks", callback_data="tog_tasks"),
     )
     markup.add(
-        types.InlineKeyboardButton(f"L1: {lvl1}", callback_data="ref_level_1"),
-        types.InlineKeyboardButton(f"L2: {lvl2}", callback_data="ref_level_2"),
-    )
-    markup.add(types.InlineKeyboardButton(f"L3: {lvl3}", callback_data="ref_level_3"))
-    markup.add(
-        types.InlineKeyboardButton(f"🎁 Daily Bonus: ₹{get_float_setting('daily_bonus',0.5):.2f}", callback_data="s_daily"),
-        types.InlineKeyboardButton(f"💵 Min Withdraw: ₹{get_float_setting('min_withdraw',5):.2f}", callback_data="s_min_wd"),
+        types.InlineKeyboardButton(
+            f"{'🔴 Maintenance ON' if mn else '🟢 Maintenance OFF'}",
+            callback_data="tog_maintenance"
+        ),
     )
     markup.add(
-        types.InlineKeyboardButton(f"👋 Welcome Bonus: ₹{get_float_setting('welcome_bonus',0.5):.2f}", callback_data="s_welcome"),
-        types.InlineKeyboardButton(f"📈 Max WD/Day: ₹{get_float_setting('max_withdraw_per_day',100):.2f}", callback_data="s_max_wd"),
-    )
-    safe_send(chat_id, f"{pe('gear')} <b>Settings</b>\n━━━━━━━━━━━━━━━━━━━━━━\nEasy controls for rewards and user-facing options.", reply_markup=markup)
-
-
-def show_advanced_settings(chat_id):
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton(f"{'🟢' if is_enabled('ip_verification_enabled', True) else '🔴'} IP Verification", callback_data="tog_ip_verify"),
-        types.InlineKeyboardButton(f"{'🟢' if is_enabled('games_enabled', True) else '🔴'} Games", callback_data="tog_games"),
+        types.InlineKeyboardButton(f"{'🟢' if ref_sys else '🔴'} Referral System", callback_data="tog_ref_sys"),
+        types.InlineKeyboardButton(f"{'🟢' if ipvf else '🔴'} IP Verify", callback_data="tog_ip_verify"),
     )
     markup.add(
-        types.InlineKeyboardButton(f"{'🟢' if is_enabled('mine_enabled', True) else '🔴'} Mine Game", callback_data="tog_mine"),
-        types.InlineKeyboardButton(f"{'🟢' if is_enabled('bot_maintenance', False) else '🔴'} Maintenance", callback_data="tog_maintenance"),
-    )
-    markup.add(types.InlineKeyboardButton("🎮 Open Mine Settings", callback_data="admin_mine_settings"))
-    safe_send(chat_id, f"{pe('gear')} <b>Advanced Settings</b>\n━━━━━━━━━━━━━━━━━━━━━━\nBackend enforcement toggles and system controls.", reply_markup=markup)
-
-
-def show_mine_settings(chat_id):
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton(f"{'🟢' if is_enabled('mine_enabled', True) else '🔴'} Toggle Mine", callback_data="tog_mine"),
-        types.InlineKeyboardButton(f"Win Rate: {get_float_setting('mine_win_rate',0.35):.2f}", callback_data="mine_set_win"),
+        types.InlineKeyboardButton(f"{'🟢' if games_en else '🔴'} Games", callback_data="tog_games"),
+        types.InlineKeyboardButton(f"🎮 Game Style: {get_setting('game_style')}", callback_data="s_game_style"),
     )
     markup.add(
-        types.InlineKeyboardButton(f"Min Bet: ₹{get_float_setting('mine_min_bet',1):.2f}", callback_data="mine_set_minbet"),
-        types.InlineKeyboardButton(f"Max Bet: ₹{get_float_setting('mine_max_bet',50):.2f}", callback_data="mine_set_maxbet"),
+        types.InlineKeyboardButton(f"L1 ₹{get_setting('referral_level_1_reward')}", callback_data="s_ref_l1"),
+        types.InlineKeyboardButton(f"L2 ₹{get_setting('referral_level_2_reward')}", callback_data="s_ref_l2"),
     )
     markup.add(
-        types.InlineKeyboardButton(f"Cooldown: {get_int_setting('mine_cooldown',15)}s", callback_data="mine_set_cooldown"),
-        types.InlineKeyboardButton(f"Multiplier: {get_float_setting('mine_reward_multiplier',2.0):.2f}x", callback_data="mine_set_multiplier"),
+        types.InlineKeyboardButton(f"L3 ₹{get_setting('referral_level_3_reward')}", callback_data="s_ref_l3"),
+        types.InlineKeyboardButton(f"Mode: {get_setting('referral_reward_mode')}", callback_data="tog_ref_mode"),
     )
-    safe_send(chat_id, f"{pe('game')} <b>Mine Game Admin Panel</b>\n━━━━━━━━━━━━━━━━━━━━━━\nAdmin can control all key mine game settings here.", reply_markup=markup)
+    markup.add(
+        types.InlineKeyboardButton(f"Inactivity {get_setting('inactivity_deduction_percent')}%", callback_data="s_inactive_pct"),
+        types.InlineKeyboardButton(f"Inactivity Days {get_setting('inactivity_days')}", callback_data="s_inactive_days"),
+    )
+    markup.add(
+        types.InlineKeyboardButton(f"Bonus Tax {get_setting('withdraw_bonus_tax_percent')}%", callback_data="s_bonus_tax"),
+        types.InlineKeyboardButton(f"UPI GST {get_setting('upi_gst_percent')}%", callback_data="s_upi_gst"),
+    )
+    markup.add(
+        types.InlineKeyboardButton(f"Daily MinRefs {get_setting('min_refs_for_daily_bonus')}", callback_data="s_daily_ref_req"),
+        types.InlineKeyboardButton(f"Code MinRefs {get_setting('min_refs_for_redeem_code')}", callback_data="s_code_ref_req"),
+    )
+    markup.add(
+        types.InlineKeyboardButton(f"🎁 Menu: {get_setting('bonus_menu_title')}", callback_data="s_bonus_menu_title"),
+        types.InlineKeyboardButton(f"🎮 Games: {get_setting('games_menu_title')}", callback_data="s_games_menu_title"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🖼 Welcome Image", callback_data="s_welcome_img"),
+        types.InlineKeyboardButton("🖼 Withdraw Image", callback_data="s_wd_img"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🚫 Ban User", callback_data="s_ban"),
+        types.InlineKeyboardButton("✅ Unban User", callback_data="s_unban"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🔄 Reset User", callback_data="s_reset_user"),
+        types.InlineKeyboardButton("💰 Add Balance", callback_data="s_add_bal"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("💸 Deduct Balance", callback_data="s_deduct_bal"),
+        types.InlineKeyboardButton("👤 User Info", callback_data="dash_user_lookup"),
+    )
+    markup.add(
+        types.InlineKeyboardButton("🗑 RESET ALL DATA", callback_data="s_reset_all"),
+    )
+    safe_send(
+        chat_id,
+        f"{pe('gear')} <b>Bot Settings</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🟢 = Enabled | 🔴 = Disabled\n"
+        f"Tap to change any setting.",
+        reply_markup=markup
+    )
 
 
 def settings_ask(call, state, prompt):
-    if not is_admin(call.from_user.id):
-        return
+    if not is_admin(call.from_user.id): return
     safe_answer(call)
     set_state(call.from_user.id, state)
     safe_send(call.message.chat.id, prompt)
@@ -686,7 +716,10 @@ def s_max_wd(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "s_wd_time")
 def s_wd_time(call):
-    settings_ask(call, "admin_set_withdraw_time", f"{pe('pencil')} Enter withdraw time range:\nFormat: <code>START-END</code>\nExample: <code>10-18</code>")
+    settings_ask(
+        call, "admin_set_withdraw_time",
+        f"{pe('pencil')} Enter withdraw time range:\nFormat: <code>START-END</code>\nExample: <code>10-18</code>"
+    )
 
 @bot.callback_query_handler(func=lambda call: call.data == "s_welcome_img")
 def s_welcome_img(call):
@@ -712,60 +745,6 @@ def s_reset_user(call):
 def s_add_bal(call):
     settings_ask(call, "admin_add_balance", f"{pe('pencil')} Format: <code>USER_ID AMOUNT</code>")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("ref_level_"))
-def ref_level_edit(call):
-    level = call.data.split("_")[-1]
-    settings_ask(call, f"admin_set_ref_level_{level}", f"Enter referral level {level} rule.\nUse: <code>fixed 2</code> or <code>percent 10</code>")
-
-@bot.callback_query_handler(func=lambda call: call.data == "tog_ip_verify")
-def tog_ip_verify(call):
-    if not is_admin(call.from_user.id): return
-    cur = is_enabled("ip_verification_enabled", True)
-    set_setting("ip_verification_enabled", not cur)
-    safe_answer(call, f"IP verification {'Enabled' if not cur else 'Disabled'}!")
-    show_advanced_settings(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "tog_games")
-def tog_games(call):
-    if not is_admin(call.from_user.id): return
-    cur = is_enabled("games_enabled", True)
-    set_setting("games_enabled", not cur)
-    safe_answer(call, f"Games {'Enabled' if not cur else 'Disabled'}!")
-    show_advanced_settings(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "tog_mine")
-def tog_mine(call):
-    if not is_admin(call.from_user.id): return
-    cur = is_enabled("mine_enabled", True)
-    set_setting("mine_enabled", not cur)
-    safe_answer(call, f"Mine game {'Enabled' if not cur else 'Disabled'}!")
-    show_mine_settings(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "admin_mine_settings")
-def admin_mine_settings(call):
-    if not is_admin(call.from_user.id): return
-    safe_answer(call)
-    show_mine_settings(call.message.chat.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "mine_set_win")
-def mine_set_win(call):
-    settings_ask(call, "admin_set_mine_win_rate", "Enter mine win rate between 0 and 1. Example: <code>0.35</code>")
-
-@bot.callback_query_handler(func=lambda call: call.data == "mine_set_minbet")
-def mine_set_minbet(call):
-    settings_ask(call, "admin_set_mine_min_bet", "Enter mine minimum bet amount.")
-
-@bot.callback_query_handler(func=lambda call: call.data == "mine_set_maxbet")
-def mine_set_maxbet(call):
-    settings_ask(call, "admin_set_mine_max_bet", "Enter mine maximum bet amount.")
-
-@bot.callback_query_handler(func=lambda call: call.data == "mine_set_cooldown")
-def mine_set_cooldown(call):
-    settings_ask(call, "admin_set_mine_cooldown", "Enter mine cooldown in seconds.")
-
-@bot.callback_query_handler(func=lambda call: call.data == "mine_set_multiplier")
-def mine_set_multiplier(call):
-    settings_ask(call, "admin_set_mine_multiplier", "Enter mine win multiplier. Example: <code>2.0</code>")
 @bot.callback_query_handler(func=lambda call: call.data == "s_deduct_bal")
 def s_deduct_bal(call):
     settings_ask(call, "admin_deduct_balance", f"{pe('pencil')} Format: <code>USER_ID AMOUNT</code>")
@@ -809,6 +788,87 @@ def tog_maintenance(call):
     set_setting("bot_maintenance", not cur)
     safe_answer(call, f"Maintenance {'ON' if not cur else 'OFF'}!")
     show_settings(call.message.chat.id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "tog_ref_sys")
+def tog_ref_sys(call):
+    if not is_admin(call.from_user.id): return
+    cur = bool(get_setting("referral_system_enabled"))
+    set_setting("referral_system_enabled", not cur)
+    safe_answer(call, f"Referral system {'enabled' if not cur else 'disabled'}")
+    show_settings(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "tog_ip_verify")
+def tog_ip_verify(call):
+    if not is_admin(call.from_user.id): return
+    cur = bool(get_setting("ip_verification_enabled"))
+    set_setting("ip_verification_enabled", not cur)
+    safe_answer(call, f"IP verification {'enabled' if not cur else 'disabled'}")
+    show_settings(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "tog_games")
+def tog_games(call):
+    if not is_admin(call.from_user.id): return
+    cur = bool(get_setting("games_enabled"))
+    set_setting("games_enabled", not cur)
+    safe_answer(call, f"Games {'enabled' if not cur else 'disabled'}")
+    show_settings(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "tog_ref_mode")
+def tog_ref_mode(call):
+    if not is_admin(call.from_user.id): return
+    cur = str(get_setting("referral_reward_mode") or "fixed").lower()
+    set_setting("referral_reward_mode", "percent" if cur == "fixed" else "fixed")
+    safe_answer(call, "Referral reward mode updated")
+    show_settings(call.message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_ref_l1")
+def s_ref_l1(call):
+    settings_ask(call, "admin_set_float|referral_level_1_reward", f"{pe('pencil')} Enter Level 1 reward amount:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_ref_l2")
+def s_ref_l2(call):
+    settings_ask(call, "admin_set_float|referral_level_2_reward", f"{pe('pencil')} Enter Level 2 reward amount:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_ref_l3")
+def s_ref_l3(call):
+    settings_ask(call, "admin_set_float|referral_level_3_reward", f"{pe('pencil')} Enter Level 3 reward amount:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_inactive_pct")
+def s_inactive_pct(call):
+    settings_ask(call, "admin_set_float|inactivity_deduction_percent", f"{pe('pencil')} Enter inactivity deduction percentage:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_inactive_days")
+def s_inactive_days(call):
+    settings_ask(call, "admin_set_int|inactivity_days", f"{pe('pencil')} Enter inactivity days threshold:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_bonus_tax")
+def s_bonus_tax(call):
+    settings_ask(call, "admin_set_float|withdraw_bonus_tax_percent", f"{pe('pencil')} Enter bonus-only withdrawal tax percentage:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_upi_gst")
+def s_upi_gst(call):
+    settings_ask(call, "admin_set_float|upi_gst_percent", f"{pe('pencil')} Enter UPI GST percentage:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_daily_ref_req")
+def s_daily_ref_req(call):
+    settings_ask(call, "admin_set_int|min_refs_for_daily_bonus", f"{pe('pencil')} Enter minimum direct referrals needed for daily bonus:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_code_ref_req")
+def s_code_ref_req(call):
+    settings_ask(call, "admin_set_int|min_refs_for_redeem_code", f"{pe('pencil')} Enter minimum direct referrals needed for redeem code claim:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_bonus_menu_title")
+def s_bonus_menu_title(call):
+    settings_ask(call, "admin_set_bonus_menu_title", f"{pe('pencil')} Enter bonus menu title text:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_games_menu_title")
+def s_games_menu_title(call):
+    settings_ask(call, "admin_set_games_menu_title", f"{pe('pencil')} Enter games menu title text:")
+
+@bot.callback_query_handler(func=lambda call: call.data == "s_game_style")
+def s_game_style(call):
+    settings_ask(call, "admin_set_game_style", f"{pe('pencil')} Enter game style: <code>web</code> or <code>normal</code>")
 
 @bot.callback_query_handler(func=lambda call: call.data == "s_reset_all")
 def s_reset_all(call):

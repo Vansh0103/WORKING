@@ -64,7 +64,7 @@ def universal_handler(message):
         if text == "🏧 Withdraw":
             withdraw_handler(message)
             return
-        if text == "🎁 Gift":
+        if text == get_bonus_menu_button_label():
             gift_handler(message)
             return
         if text == "📋 Tasks":
@@ -570,82 +570,6 @@ def universal_handler(message):
         safe_send(message.chat.id, f"{pe('check')} Redeem code #{code_id} deleted.")
         return
 
-
-    if state.startswith("admin_set_ref_level_"):
-        level = state.split("_")[-1]
-        parts = text.strip().split()
-        if len(parts) != 2 or parts[0].lower() not in ("fixed", "percent"):
-            safe_send(message.chat.id, f"{pe('cross')} Use: <code>fixed 2</code> or <code>percent 10</code>")
-            return
-        try:
-            val = float(parts[1])
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter valid number!")
-            return
-        clear_state(user_id)
-        set_setting(f"ref_level{level}_type", parts[0].lower())
-        set_setting(f"ref_level{level}_value", val)
-        if level == '1' and parts[0].lower() == 'fixed':
-            set_setting('per_refer', val)
-        safe_send(message.chat.id, f"{pe('check')} Referral level {level} updated.")
-        return
-    
-    if state == "admin_set_mine_win_rate":
-        try:
-            val = float(text)
-            assert 0 <= val <= 1
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter a number between 0 and 1.")
-            return
-        clear_state(user_id)
-        set_setting("mine_win_rate", val)
-        safe_send(message.chat.id, f"{pe('check')} Mine win rate set to {val:.2f}")
-        return
-    
-    if state == "admin_set_mine_min_bet":
-        try:
-            val = float(text)
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter valid amount!")
-            return
-        clear_state(user_id)
-        set_setting("mine_min_bet", val)
-        safe_send(message.chat.id, f"{pe('check')} Mine min bet set to ₹{val:.2f}")
-        return
-    
-    if state == "admin_set_mine_max_bet":
-        try:
-            val = float(text)
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter valid amount!")
-            return
-        clear_state(user_id)
-        set_setting("mine_max_bet", val)
-        safe_send(message.chat.id, f"{pe('check')} Mine max bet set to ₹{val:.2f}")
-        return
-    
-    if state == "admin_set_mine_cooldown":
-        try:
-            val = int(float(text))
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter valid cooldown!")
-            return
-        clear_state(user_id)
-        set_setting("mine_cooldown", val)
-        safe_send(message.chat.id, f"{pe('check')} Mine cooldown set to {val}s")
-        return
-    
-    if state == "admin_set_mine_multiplier":
-        try:
-            val = float(text)
-        except Exception:
-            safe_send(message.chat.id, f"{pe('cross')} Enter valid multiplier!")
-            return
-        clear_state(user_id)
-        set_setting("mine_reward_multiplier", val)
-        safe_send(message.chat.id, f"{pe('check')} Mine multiplier set to {val:.2f}x")
-        return
-    
     if state == "admin_set_per_refer":
         try:
             val = float(text)
@@ -755,6 +679,67 @@ def universal_handler(message):
             safe_send(message.chat.id, f"{pe('check')} Message sent to <code>{tid}</code>!")
         except Exception as e:
             safe_send(message.chat.id, f"{pe('cross')} Failed: {e}")
+        return
+
+    if state == "enter_mines_bet":
+        try:
+            bet = float(text)
+        except Exception:
+            safe_send(message.chat.id, f"{pe('cross')} Enter a valid bet amount!")
+            return
+        clear_state(user_id)
+        result = play_mines_round(user_id, bet)
+        if not result.get('ok'):
+            safe_send(message.chat.id, f"{pe('cross')} {result.get('message')}")
+            return
+        outcome = 'WIN' if result.get('won') else 'LOSE'
+        safe_send(message.chat.id, f"{pe('game')} <b>Mines Result</b>\n\n{pe('money')} Bet: ₹{result['bet']:.2f}\n{pe('sparkle')} Reward: ₹{result['reward']:.2f}\n{pe('fly_money')} New Balance: ₹{result['new_balance']:.2f}\n{pe('info')} Outcome: <b>{outcome}</b>")
+        return
+
+    if state == "admin_set_bonus_menu_title":
+        clear_state(user_id)
+        set_setting("bonus_menu_title", text[:24])
+        safe_send(message.chat.id, f"{pe('check')} Bonus menu title updated.")
+        return
+
+    if state == "admin_set_games_menu_title":
+        clear_state(user_id)
+        set_setting("games_menu_title", text[:24])
+        safe_send(message.chat.id, f"{pe('check')} Games menu title updated.")
+        return
+
+    if state.startswith("admin_set_float|"):
+        key = state.split("|", 1)[1]
+        try:
+            val = float(text)
+        except Exception:
+            safe_send(message.chat.id, f"{pe('cross')} Enter valid number!")
+            return
+        clear_state(user_id)
+        set_setting(key, val)
+        safe_send(message.chat.id, f"{pe('check')} {key} updated to {val}")
+        return
+
+    if state.startswith("admin_set_int|"):
+        key = state.split("|", 1)[1]
+        try:
+            val = int(float(text))
+        except Exception:
+            safe_send(message.chat.id, f"{pe('cross')} Enter valid number!")
+            return
+        clear_state(user_id)
+        set_setting(key, val)
+        safe_send(message.chat.id, f"{pe('check')} {key} updated to {val}")
+        return
+
+    if state == "admin_set_game_style":
+        clear_state(user_id)
+        val = text.strip().lower()
+        if val not in ["web", "normal"]:
+            safe_send(message.chat.id, f"{pe('cross')} Enter <code>web</code> or <code>normal</code>.")
+            return
+        set_setting("game_style", val)
+        safe_send(message.chat.id, f"{pe('check')} Game style set to {val}.")
         return
 
     # ======= ADMIN TASK STATES =======

@@ -48,6 +48,7 @@ def start_handler(message):
         send_join_message(chat_id)
         return
 
+    maybe_apply_inactivity_deduction(user_id)
     send_welcome(chat_id, user_id, first_name, is_new)
 
     if is_new and not is_admin(user_id):
@@ -70,7 +71,7 @@ def send_welcome(chat_id, user_id, first_name, is_new=False):
     if not user:
         return
     balance = user["balance"]
-    per_refer = get_setting("per_refer")
+    per_refer = get_setting("referral_level_1_reward") or get_setting("per_refer")
     min_withdraw = get_setting("min_withdraw")
     welcome_image = get_setting("welcome_image")
     try:
@@ -124,16 +125,14 @@ def verify_join(call):
             )
             user = get_user(user_id)
 
-        if is_enabled("ip_verification_enabled", True) and int(user["ip_verified"] or 0) != 1:
+        if get_setting("ip_verification_enabled") and int(user["ip_verified"] or 0) != 1:
             send_ip_verify_message(call.message.chat.id, user_id)
             return
 
-        ok, reason = anticheat.can_pay_referral_bonus(user_id)
-
-        if ok:
-            process_referral_bonus(user_id)
-
+        result = process_referral_bonus(user_id)
         send_welcome(call.message.chat.id, user_id, call.from_user.first_name or "User", True)
+        if not result.get("ok") and int(user["referred_by"] or 0):
+            safe_send(call.message.chat.id, f"{pe('info')} Welcome! You can still use the bot, but your inviter cannot get the referral bonus until requirements are met.")
     else:
         safe_answer(call, "❌ Please join ALL channels first!", True)
 
@@ -147,18 +146,19 @@ def check_ip_verified(call):
         safe_answer(call, "❌ User not found!", True)
         return
 
-    if is_enabled("ip_verification_enabled", True) and int(user["ip_verified"] or 0) != 1:
-        safe_answer(call, "❌ IP verification failed ", True)
+    if int(user["ip_verified"] or 0) != 1:
+        safe_answer(call, "❌ IP verification failed", True)
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except:
+            pass
+        send_welcome(call.message.chat.id, user_id, call.from_user.first_name or "User", False)
+        if int(user["referred_by"] or 0):
+            safe_send(call.message.chat.id, f"{pe('info')} You can still use the bot, but the person who referred you cannot get the referral bonus.")
         return
 
-    ok, reason = anticheat.can_pay_referral_bonus(user_id)
-
-    if ok:
-        process_referral_bonus(user_id)
-        safe_answer(call, "✅ IP verification complete!")
-    else:
-        safe_answer(call, f"❌ {reason}", True)
-        return
+    process_referral_bonus(user_id)
+    safe_answer(call, "✅ IP verification complete!")
 
     try:
         bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -247,47 +247,37 @@ def open_refer_cb(call):
     safe_answer(call)
     show_refer(call.message.chat.id, user_id, user)
 
-
-
 def show_refer(chat_id, user_id, user):
-    levels = get_referral_levels()
+    per_refer = get_setting("per_refer")
     try:
         bot_username = bot.get_me().username
     except:
         bot_username = "bot"
     refer_link = f"https://t.me/{bot_username}?start={user_id}"
-    share_msg = f"Join using my link and help me unlock rewards: {refer_link}"
+    share_msg = f"💰 Earn from the 3-level referral system! Join {refer_link}"
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(types.InlineKeyboardButton(
         "📤 Share My Referral Link",
         url=f"https://t.me/share/url?url={refer_link}&text={share_msg}"
     ))
-    markup.add(types.InlineKeyboardButton("🏆 Referral Board", callback_data="ref_board"))
-    levels_text = "\n".join([f"• {format_referral_level_line(x)}" for x in levels])
     text = (
         f"{pe('fire')} <b>Refer & Earn</b> {pe('fly_money')}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{pe('star')} <b>Earn ₹{per_refer} per referral!</b>\n\n"
         f"{pe('link')} <b>Your Referral Link:</b>\n"
         f"<code>{refer_link}</code>\n\n"
-        f"{pe('thumbs_up')} <b>Total Referrals:</b> {user['referral_count']}\n"
-        f"{pe('money')} <b>Referral Earnings:</b> Included in wallet\n\n"
-        f"{pe('star')} <b>3-Level Rewards</b>\n{levels_text}\n\n"
-        f"{pe('info')} Direct referrals increase your total referrals and leaderboard rank.\n"
+        f"{pe('chart_up')} <b>Your Stats:</b>\n"
+        f"  {pe('thumbs_up')} Referrals: {user['referral_count']}\n"
+        f"  {pe('money')} Earned: ₹{user['referral_count'] * per_refer:.2f}\n\n"
+        f"{pe('zap')} <b>How It Works:</b>\n"
+        f"  {pe('play')} Share your link\n"
+        f"  {pe('play')} Friend joins the bot\n"
+        f"  {pe('play')} Friend joins all required channels and verifies IP\n"
+        f"  {pe('play')} Rewards are credited after verification and admin rules.\n\n"
+        f"{pe('boom')} <b>Share on:</b> WhatsApp, Instagram,\n"
+        f"Telegram groups, Facebook!\n\n"
+        f"{pe('crown')} <i>No limit! Earn unlimited!</i>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━"
     )
     safe_send(chat_id, text, reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data == "ref_board")
-def referral_board_cb(call):
-    safe_answer(call)
-    rows = get_top_referrers(10)
-    if not rows:
-        safe_send(call.message.chat.id, f"{pe('info')} No referrals yet.")
-        return
-    text = f"{pe('trophy')} <b>Top Referrers</b>\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    medals = ["🥇", "🥈", "🥉"]
-    for i, row in enumerate(rows, start=1):
-        medal = medals[i-1] if i <= 3 else f"{i}."
-        name = row['first_name'] or row['username'] or str(row['user_id'])
-        text += f"{medal} <b>{name}</b> — {int(row['referral_count'] or 0)} referrals\n"
-    safe_send(call.message.chat.id, text)
